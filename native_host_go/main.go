@@ -372,13 +372,13 @@ func (p *ProxyServer) handleConn(conn net.Conn) {
 	p.mu.Unlock()
 
 	if req.Method == "CONNECT" {
-		p.handleConnect(conn, req, srcHost, srcPort)
+		p.handleConnect(conn, req, stealth, srcHost, srcPort)
 	} else {
 		p.handleHTTP(conn, req, stealth, srcHost, srcPort)
 	}
 }
 
-func (p *ProxyServer) handleConnect(conn net.Conn, req *http.Request, srcHost, srcPort string) {
+func (p *ProxyServer) handleConnect(conn net.Conn, req *http.Request, stealth bool, srcHost, srcPort string) {
 	host := req.Host
 	if !strings.Contains(host, ":") {
 		host += ":443"
@@ -392,8 +392,12 @@ func (p *ProxyServer) handleConnect(conn net.Conn, req *http.Request, srcHost, s
 	}
 	defer target.Close()
 
+	status := "tunneling"
+	if stealth {
+		status = "stealth"
+	}
 	fmt.Fprintf(conn, "HTTP/1.1 200 Connection established\r\n\r\n")
-	p.sendLog("CONNECT", srcHost, srcPort, req.Host, portOf(host), "", "tunneling")
+	p.sendLog("CONNECT", srcHost, srcPort, req.Host, portOf(host), "", status)
 
 	done := make(chan struct{}, 2)
 	go func() { io.Copy(target, conn); done <- struct{}{} }()

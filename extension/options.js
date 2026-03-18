@@ -102,6 +102,7 @@ function renderLogs() {
     const status = e.status || '';
     let statusClass = 'status-ok';
     if (status.startsWith('error') || method === 'ERROR') statusClass = 'status-err';
+    else if (status === 'stealth') statusClass = 'status-stealth';
     else if (method === 'CONNECT') statusClass = 'status-tun';
 
     const host    = escHtml(e.host || e.message || '');

@@ -347,9 +347,10 @@ input:checked + .slider::before { transform: translateX(18px); }
 .td-path { color: #64748b; }
 .td-port { color: #475569; }
 
-.status-ok  { color: var(--green); }
-.status-err { color: var(--red); }
-.status-tun { color: var(--purple); }
+.status-ok     { color: var(--green); }
+.status-err    { color: var(--red); }
+.status-tun    { color: var(--purple); }
+.status-stealth { color: var(--accent); }
 
 /* Native host status */
 .host-status-row { display: flex; align-items: center; gap: 8px; }
