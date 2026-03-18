@@ -1,0 +1,37 @@
+{
+  "manifest_version": 3,
+  "name": "Chrome Proxy Server",
+  "version": "1.0.0",
+  "description": "Turn Chrome into an HTTP/HTTPS proxy server for other apps and nodes",
+  "permissions": [
+    "nativeMessaging",
+    "storage",
+    "alarms"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["native_host/proxy_host.py"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "name": "com.chromeproxy.host",
+  "description": "Chrome Proxy Native Host — HTTP/HTTPS proxy server",
+  "path": "PROXY_HOST_PATH",
+  "type": "stdio",
+  "allowed_origins": [
+    "chrome-extension://EXTENSION_ID/"
+  ]
+}

@@ -1,0 +1,14 @@
+# Private key — never commit this
+*.pem
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Claude internal
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
