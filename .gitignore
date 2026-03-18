@@ -1,6 +1,14 @@
 # Private key — never commit this
 *.pem
 
+# Compiled binaries
+*.exe
+native_host_go/chrome-proxy-*
+extension/native_host/chrome-proxy-*
+
+# Packed extension
+*.crx
+
 # Python cache
 __pycache__/
 *.pyc
