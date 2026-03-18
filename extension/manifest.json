@@ -2,6 +2,7 @@
   "manifest_version": 3,
   "name": "Chrome Proxy Server",
   "version": "1.0.0",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAyBNB9NlYKLtVp+oSgfNEtpYd/IFzJboCK5y9pettJLdDtwR21pbvY846+6r65om/p1rtZjlfOJRkp2XeAZvALuejVyGscZ+MDPN6NLTQaOSCFq6FP1zHbDiYquJzg81irdzY36rtUQ2q0dnYyiHzbk1sJmSL3/SKLJivASUFJ3G63w9nIEaLJAd7eg2Bty5c/DflS44DUX12dtpHO6nzBI1l89L9GpzokA0G/lFUvj9YQyaGe35ylJh6y0zZPjXKC1v0N+lRyLBqb1zgtPYMNjbN6b6SD9OMemKJtyzljzZEF10odLITwtPtlrshojYap3nfvu2+e+NH2gg1iWNxTwIDAQAB",
   "description": "Turn Chrome into an HTTP/HTTPS proxy server for other apps and nodes",
   "permissions": [
     "nativeMessaging",
@@ -30,7 +31,12 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["native_host/proxy_host.py"],
+      "resources": [
+        "native_host/chrome-proxy-linux-amd64",
+        "native_host/chrome-proxy-darwin-amd64",
+        "native_host/chrome-proxy-darwin-arm64",
+        "native_host/chrome-proxy-windows-amd64.exe"
+      ],
       "matches": ["<all_urls>"]
     }
   ]

@@ -78,6 +78,8 @@ class ProxyHandler:
             {
                 "type": "log",
                 "timestamp": time.strftime("%H:%M:%S"),
+                "src_host": self.addr[0] if self.addr else "",
+                "src_port": self.addr[1] if self.addr else "",
                 **kwargs,
             }
         )

@@ -81,23 +81,14 @@
           </div>
 
           <button class="btn-host" id="install-btn">Install Native Host</button>
-          <button class="btn-host btn-host-danger" id="uninstall-btn" style="display:none">Uninstall Native Host</button>
 
           <div class="install-steps" id="install-steps" style="display:none">
-            <div class="step-line">Script saved to Downloads. Open a terminal and run:</div>
+            <div class="step-line">Binary saved to Downloads. Open a terminal and run:</div>
             <div class="cmd-row">
               <code class="cmd-text" id="cmd-text"></code>
               <button class="btn-copy" id="copy-cmd-btn" title="Copy to clipboard">Copy</button>
             </div>
-            <div class="step-line step-note">Works on Linux, macOS and Windows. Requires Python 3.</div>
-          </div>
-
-          <div class="uninstall-steps" id="uninstall-steps" style="display:none">
-            <div class="step-line">Script saved to Downloads. Open a terminal and run:</div>
-            <div class="cmd-row">
-              <code class="cmd-text" id="uninstall-cmd-text"></code>
-              <button class="btn-copy" id="copy-uninstall-btn" title="Copy to clipboard">Copy</button>
-            </div>
+            <div class="step-line step-note">No dependencies — self-contained binary for Linux, macOS &amp; Windows.</div>
           </div>
         </section>
 
@@ -138,6 +129,8 @@
               <tr>
                 <th class="col-time">Time</th>
                 <th class="col-method">Method</th>
+                <th class="col-src">Source</th>
+                <th class="col-src-port">Src Port</th>
                 <th class="col-host">Host</th>
                 <th class="col-port">Port</th>
                 <th class="col-path">Path</th>
@@ -146,7 +139,7 @@
             </thead>
             <tbody id="log-body">
               <tr class="empty-row">
-                <td colspan="6">No traffic captured yet. Start the proxy and route traffic through it.</td>
+                <td colspan="8">No traffic captured yet. Start the proxy and route traffic through it.</td>
               </tr>
             </tbody>
           </table>

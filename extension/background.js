@@ -123,20 +123,29 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       break;
 
     case 'pingNative':
-      // Try to connect if not already; report whether native host is reachable
       if (nativePort) { sendResponse({ ok: true }); return true; }
       try {
         const testPort = chrome.runtime.connectNative(NATIVE_HOST);
-        testPort.onMessage.addListener(() => {});
+        let done = false;
+        // Got a reply → host is alive
+        testPort.onMessage.addListener(() => {
+          if (done) return;
+          done = true;
+          testPort.disconnect();
+          sendResponse({ ok: true });
+        });
+        // Disconnected before reply → host missing or errored
         testPort.onDisconnect.addListener(() => {
+          if (done) return;
+          done = true;
           const e = chrome.runtime.lastError;
-          sendResponse({ ok: !e, error: e ? e.message : null });
+          sendResponse({ ok: false, error: e ? e.message : 'disconnected' });
         });
         testPort.postMessage({ command: 'getStatus' });
       } catch (e) {
         sendResponse({ ok: false, error: e.message });
       }
-      return true; // async
+      return true;
   }
 });
 
