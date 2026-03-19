@@ -121,6 +121,11 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       }
       break;
 
+    case 'connectNative':
+      connectNative();
+      sendResponse({ ok: true });
+      return true;
+
     case 'clearLogs':
       proxyState.logs = [];
       sendResponse({ ok: true });

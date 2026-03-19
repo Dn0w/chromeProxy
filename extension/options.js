@@ -90,22 +90,35 @@ function caInstallLabel() {
   return 'Run in Terminal (requires libnss3-tools):';
 }
 
+let pendingCADownload = false;
+
+function doCADownload(pem) {
+  const fname = 'chrome-proxy-ca.crt';
+  const blob  = new Blob([pem], { type: 'application/x-x509-ca-cert' });
+  const a     = document.createElement('a');
+  a.href      = URL.createObjectURL(blob);
+  a.download  = fname;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  const cmd = caInstallCmd(fname);
+  caStepLbl.textContent = caInstallLabel();
+  caCmdText.textContent = cmd;
+  caSteps.style.display = 'flex';
+  makeCopyBtn(caCopyBtn, cmd);
+}
+
 caDlBtn.addEventListener('click', () => {
   chrome.runtime.sendMessage({ type: 'getState' }, (resp) => {
     const pem = resp && resp.caPEM;
-    if (!pem) { alert('Native host not connected. Start the proxy first.'); return; }
-    const fname = 'chrome-proxy-ca.crt';
-    const blob  = new Blob([pem], { type: 'application/x-x509-ca-cert' });
-    const a     = document.createElement('a');
-    a.href      = URL.createObjectURL(blob);
-    a.download  = fname;
-    a.click();
-    URL.revokeObjectURL(a.href);
-    const cmd = caInstallCmd(fname);
-    caStepLbl.textContent = caInstallLabel();
-    caCmdText.textContent = cmd;
-    caSteps.style.display = 'flex';
-    makeCopyBtn(caCopyBtn, cmd);
+    if (pem) {
+      doCADownload(pem);
+    } else {
+      // Native host not yet connected — connect it and wait for status
+      caDlBtn.textContent = 'Connecting…';
+      caDlBtn.disabled = true;
+      pendingCADownload = true;
+      chrome.runtime.sendMessage({ type: 'connectNative' });
+    }
   });
 });
 
@@ -232,7 +245,15 @@ methodFilter.addEventListener('change', applyFilter);
 // ── Live updates ──────────────────────────────────────────────────────────────
 
 chrome.runtime.onMessage.addListener((msg) => {
-  if (msg.type === 'stateUpdate') applyState(msg.state);
+  if (msg.type === 'stateUpdate') {
+    applyState(msg.state);
+    if (pendingCADownload && msg.state.caPEM) {
+      pendingCADownload = false;
+      caDlBtn.textContent = 'Download CA Certificate';
+      caDlBtn.disabled = false;
+      doCADownload(msg.state.caPEM);
+    }
+  }
   if (msg.type === 'newLog') {
     allLogs.unshift(msg.entry);
     if (allLogs.length > 1000) allLogs.length = 1000;
