@@ -52,17 +52,14 @@
           </div>
 
           <div class="field">
-            <label class="field-label">Stealth Headers</label>
-            <div class="toggle-row">
-              <label class="switch">
-                <input type="checkbox" id="stealth-toggle">
-                <span class="slider"></span>
-              </label>
-              <span class="toggle-label" id="stealth-label">Off</span>
+            <label class="field-label">Mode</label>
+            <div class="seg-control" id="mode-selector">
+              <button class="seg-btn active" data-mode="normal">Normal</button>
+              <button class="seg-btn" data-mode="stealth">Stealth</button>
+              <button class="seg-btn" data-mode="mitm">MITM</button>
             </div>
-            <div class="field-hint stealth-hint">
-              Strips proxy headers &amp; spoofs Chrome User-Agent on HTTP.<br>
-              HTTPS tunnels pass through encrypted — inner headers unchanged.
+            <div class="field-hint stealth-hint" id="mode-hint">
+              Normal: plain HTTP/HTTPS proxy tunnel.
             </div>
           </div>
 
@@ -111,9 +108,24 @@
         <section class="card">
           <h2 class="card-title">How to Use</h2>
           <div class="howto">
-            <p>Set your app's HTTP proxy to:</p>
-            <code class="proxy-addr"><span id="howto-addr">127.0.0.1</span>:<span id="howto-port">8080</span></code>
-            <p class="hint-small">Supports HTTP and HTTPS (CONNECT tunneling)</p>
+            <div class="howto-step">
+              <span class="howto-num">1</span>
+              <div>
+                <strong>Install the Native Host</strong>
+                <p>Click <em>Install Native Host</em> above, download the binary, and run the install command in a terminal. Required to start the proxy server.</p>
+              </div>
+            </div>
+            <div class="howto-step">
+              <span class="howto-num">2</span>
+              <div>
+                <strong>Install the CA Certificate <em>(MITM mode only)</em></strong>
+                <p>Download the CA cert above and install it in your <strong>proxy client app</strong> (not Chrome). Most apps have a custom CA / trusted certificates setting. This lets the proxy decrypt HTTPS to strip proxy headers.</p>
+              </div>
+            </div>
+            <div class="howto-proxy-addr">
+              <span class="field-label">Proxy address</span>
+              <code class="proxy-addr"><span id="howto-addr">127.0.0.1</span>:<span id="howto-port">8080</span></code>
+            </div>
           </div>
         </section>
       </aside>

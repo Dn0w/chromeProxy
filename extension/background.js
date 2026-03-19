@@ -8,7 +8,7 @@ let proxyState = {
   running: false,
   port: 8080,
   bindAddr: '0.0.0.0',
-  stealth: false,
+  mode: 'normal',
   caReady: false,
   caPEM: '',
   logs: [],
@@ -44,7 +44,7 @@ function handleNativeMessage(msg) {
     proxyState.running = msg.running;
     if (msg.port) proxyState.port = msg.port;
     if (msg.bindAddr) proxyState.bindAddr = msg.bindAddr;
-    if (msg.stealth !== undefined) proxyState.stealth = msg.stealth;
+    if (msg.mode) proxyState.mode = msg.mode;
     if (msg.caReady !== undefined) proxyState.caReady = msg.caReady;
     if (msg.caPEM) proxyState.caPEM = msg.caPEM;
     proxyState.error = msg.error || null;
@@ -68,7 +68,7 @@ function broadcastState() {
 
 function sanitizedState() {
   // Don't send full logs in broadcast — popup/options fetch them on demand
-  return { running: proxyState.running, port: proxyState.port, bindAddr: proxyState.bindAddr, stealth: proxyState.stealth, caReady: proxyState.caReady, caPEM: proxyState.caPEM, error: proxyState.error };
+  return { running: proxyState.running, port: proxyState.port, bindAddr: proxyState.bindAddr, mode: proxyState.mode, caReady: proxyState.caReady, caPEM: proxyState.caPEM, error: proxyState.error };
 }
 
 function nowTime() {
@@ -86,10 +86,10 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     case 'startProxy':
       proxyState.port = msg.port || proxyState.port;
       proxyState.bindAddr = msg.bindAddr || proxyState.bindAddr;
-      if (msg.stealth !== undefined) proxyState.stealth = msg.stealth;
-      chrome.storage.local.set({ port: proxyState.port, bindAddr: proxyState.bindAddr, stealth: proxyState.stealth, enabled: true });
+      if (msg.mode) proxyState.mode = msg.mode;
+      chrome.storage.local.set({ port: proxyState.port, bindAddr: proxyState.bindAddr, mode: proxyState.mode, enabled: true });
       connectNative();
-      if (nativePort) nativePort.postMessage({ command: 'start', port: proxyState.port, bindAddr: proxyState.bindAddr, stealth: proxyState.stealth });
+      if (nativePort) nativePort.postMessage({ command: 'start', port: proxyState.port, bindAddr: proxyState.bindAddr, mode: proxyState.mode });
       break;
 
     case 'stopProxy':
@@ -101,7 +101,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       proxyState.port = msg.port;
       chrome.storage.local.set({ port: msg.port });
       if (proxyState.running && nativePort) {
-        nativePort.postMessage({ command: 'start', port: msg.port, bindAddr: proxyState.bindAddr });
+        nativePort.postMessage({ command: 'start', port: msg.port, bindAddr: proxyState.bindAddr, mode: proxyState.mode });
       }
       break;
 
@@ -109,15 +109,15 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       proxyState.bindAddr = msg.bindAddr;
       chrome.storage.local.set({ bindAddr: msg.bindAddr });
       if (proxyState.running && nativePort) {
-        nativePort.postMessage({ command: 'start', port: proxyState.port, bindAddr: msg.bindAddr, stealth: proxyState.stealth });
+        nativePort.postMessage({ command: 'start', port: proxyState.port, bindAddr: msg.bindAddr, mode: proxyState.mode });
       }
       break;
 
-    case 'updateStealth':
-      proxyState.stealth = msg.stealth;
-      chrome.storage.local.set({ stealth: msg.stealth });
+    case 'updateMode':
+      proxyState.mode = msg.mode;
+      chrome.storage.local.set({ mode: msg.mode });
       if (proxyState.running && nativePort) {
-        nativePort.postMessage({ command: 'start', port: proxyState.port, bindAddr: proxyState.bindAddr, stealth: msg.stealth });
+        nativePort.postMessage({ command: 'start', port: proxyState.port, bindAddr: proxyState.bindAddr, mode: msg.mode });
       }
       break;
 
@@ -165,18 +165,18 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === 'keepAlive') {
     // Reconnect if we should be running but lost the connection
     chrome.storage.local.get(['enabled'], (r) => {
-      if (r.enabled && !nativePort) connectNative();
+      if (r.enabled && !nativePort) { connectNative(); if (nativePort) nativePort.postMessage({ command: 'start', port: proxyState.port, bindAddr: proxyState.bindAddr, mode: proxyState.mode }); }
     });
   }
 });
 
 // Restore state on service worker startup
-chrome.storage.local.get(['port', 'bindAddr', 'stealth', 'enabled'], (r) => {
+chrome.storage.local.get(['port', 'bindAddr', 'mode', 'enabled'], (r) => {
   if (r.port) proxyState.port = r.port;
   if (r.bindAddr) proxyState.bindAddr = r.bindAddr;
-  if (r.stealth !== undefined) proxyState.stealth = r.stealth;
+  if (r.mode) proxyState.mode = r.mode;
   if (r.enabled) {
     connectNative();
-    if (nativePort) nativePort.postMessage({ command: 'start', port: proxyState.port, bindAddr: proxyState.bindAddr, stealth: proxyState.stealth });
+    if (nativePort) nativePort.postMessage({ command: 'start', port: proxyState.port, bindAddr: proxyState.bindAddr, mode: proxyState.mode });
   }
 });

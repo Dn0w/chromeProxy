@@ -6,8 +6,8 @@ const toggle        = document.getElementById('proxy-toggle');
 const toggleLbl     = document.getElementById('toggle-label');
 const bindAddrInput  = document.getElementById('bind-addr-input');
 const applyBindBtn   = document.getElementById('apply-bind-addr');
-const stealthToggle  = document.getElementById('stealth-toggle');
-const stealthLabel   = document.getElementById('stealth-label');
+const modeSelector   = document.getElementById('mode-selector');
+const modeHint       = document.getElementById('mode-hint');
 const portInput     = document.getElementById('port-input');
 const applyBtn      = document.getElementById('apply-port');
 const howtoAddr     = document.getElementById('howto-addr');
@@ -54,8 +54,7 @@ function applyState(s) {
 
   portInput.value = s.port || 8080;
   bindAddrInput.value = s.bindAddr || '0.0.0.0';
-  stealthToggle.checked = !!s.stealth;
-  stealthLabel.textContent = s.stealth ? 'On' : 'Off';
+  setMode(s.mode || 'normal');
   updateCA(!!s.caReady);
   updateHowto(s.bindAddr || '0.0.0.0', s.port || 8080);
 
@@ -217,20 +216,37 @@ function escHtml(s) {
 
 toggle.addEventListener('change', () => {
   if (toggle.checked) {
+    const activeBtn = modeSelector.querySelector('.seg-btn.active');
     chrome.runtime.sendMessage({
       type: 'startProxy',
       port: parseInt(portInput.value) || 8080,
       bindAddr: bindAddrInput.value.trim() || '0.0.0.0',
-      stealth: stealthToggle.checked
+      mode: activeBtn ? activeBtn.dataset.mode : 'normal'
     });
   } else {
     chrome.runtime.sendMessage({ type: 'stopProxy' });
   }
 });
 
-stealthToggle.addEventListener('change', () => {
-  stealthLabel.textContent = stealthToggle.checked ? 'On' : 'Off';
-  chrome.runtime.sendMessage({ type: 'updateStealth', stealth: stealthToggle.checked });
+const modeHints = {
+  normal:  'Normal: plain HTTP/HTTPS proxy tunnel.',
+  stealth: 'Stealth: strips proxy headers &amp; spoofs Chrome User-Agent on HTTP.',
+  mitm:    'MITM: intercepts HTTPS to strip headers inside encrypted tunnels (requires CA certificate).',
+};
+
+function setMode(mode) {
+  modeSelector.querySelectorAll('.seg-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.mode === mode);
+  });
+  modeHint.innerHTML = modeHints[mode] || modeHints.normal;
+}
+
+modeSelector.addEventListener('click', (e) => {
+  const btn = e.target.closest('.seg-btn');
+  if (!btn) return;
+  const mode = btn.dataset.mode;
+  setMode(mode);
+  chrome.runtime.sendMessage({ type: 'updateMode', mode });
 });
 
 applyBindBtn.addEventListener('click', () => {

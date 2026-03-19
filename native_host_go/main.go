@@ -177,7 +177,7 @@ type InMsg struct {
 	Command  string `json:"command"`
 	Port     int    `json:"port"`
 	BindAddr string `json:"bindAddr"`
-	Stealth  bool   `json:"stealth"`
+	Mode     string `json:"mode"` // "normal" | "stealth" | "mitm"
 }
 
 // StatusMsg is sent in response to start/stop/getStatus commands.
@@ -186,7 +186,7 @@ type StatusMsg struct {
 	Running  bool   `json:"running"`
 	Port     int    `json:"port"`
 	BindAddr string `json:"bindAddr"`
-	Stealth  bool   `json:"stealth"`
+	Mode     string `json:"mode"`
 	CAReady  bool   `json:"caReady"`
 	CAPEM    string `json:"caPEM,omitempty"`
 	Error    string `json:"error,omitempty"`
@@ -260,17 +260,21 @@ type ProxyServer struct {
 	running  bool
 	port     int
 	bindAddr string
-	stealth  bool
+	mode     string // "normal" | "stealth" | "mitm"
 }
 
-var proxy = &ProxyServer{port: 8080, bindAddr: "0.0.0.0"}
+var proxy = &ProxyServer{port: 8080, bindAddr: "0.0.0.0", mode: "normal"}
 
-func (p *ProxyServer) start(port int, bindAddr string, stealth bool) error {
+func (p *ProxyServer) start(port int, bindAddr, mode string) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
+	if mode == "" {
+		mode = "normal"
+	}
+
 	if p.running && p.listener != nil {
-		if p.port == port && p.bindAddr == bindAddr && p.stealth == stealth {
+		if p.port == port && p.bindAddr == bindAddr && p.mode == mode {
 			return nil
 		}
 		p.listener.Close()
@@ -292,7 +296,7 @@ func (p *ProxyServer) start(port int, bindAddr string, stealth bool) error {
 	p.listener = ln
 	p.port = port
 	p.bindAddr = bindAddr
-	p.stealth = stealth
+	p.mode = mode
 	p.running = true
 
 	go p.serve(ln)
@@ -332,17 +336,17 @@ func (p *ProxyServer) handleConn(conn net.Conn) {
 	}
 
 	p.mu.Lock()
-	stealth := p.stealth
+	mode := p.mode
 	p.mu.Unlock()
 
 	if req.Method == "CONNECT" {
-		p.handleConnect(conn, req, stealth, srcHost, srcPort)
+		p.handleConnect(conn, req, mode, srcHost, srcPort)
 	} else {
-		p.handleHTTP(conn, req, stealth, srcHost, srcPort)
+		p.handleHTTP(conn, req, mode, srcHost, srcPort)
 	}
 }
 
-func (p *ProxyServer) handleConnect(conn net.Conn, req *http.Request, stealth bool, srcHost, srcPort string) {
+func (p *ProxyServer) handleConnect(conn net.Conn, req *http.Request, mode, srcHost, srcPort string) {
 	host := req.Host
 	if !strings.Contains(host, ":") {
 		host += ":443"
@@ -360,15 +364,19 @@ func (p *ProxyServer) handleConnect(conn net.Conn, req *http.Request, stealth bo
 
 	hostname, port, _ := net.SplitHostPort(host)
 
-	// MITM when stealth is on and CA is ready — otherwise plain tunnel
-	if stealth && caKey != nil {
+	// MITM mode: TLS interception (requires CA)
+	if mode == "mitm" && caKey != nil {
 		p.handleMITM(conn, target, hostname, port, srcHost, srcPort)
 		return
 	}
 
+	// Stealth mode: blind tunnel but labelled — headers can't be stripped (encrypted)
+	// Normal mode: plain blind tunnel
 	status := "tunneling"
-	if stealth {
+	if mode == "stealth" {
 		status = "stealth"
+	} else if mode == "mitm" {
+		status = "stealth" // mitm requested but CA not ready — fall back to tunnel
 	}
 	p.sendLog("CONNECT", srcHost, srcPort, hostname, port, "", status)
 
@@ -378,7 +386,7 @@ func (p *ProxyServer) handleConnect(conn net.Conn, req *http.Request, stealth bo
 	<-done
 }
 
-func (p *ProxyServer) handleHTTP(conn net.Conn, req *http.Request, stealth bool, srcHost, srcPort string) {
+func (p *ProxyServer) handleHTTP(conn net.Conn, req *http.Request, mode, srcHost, srcPort string) {
 	req.Header.Del("Proxy-Connection")
 	req.Header.Del("Proxy-Authorization")
 	req.Header.Del("Te")
@@ -386,7 +394,7 @@ func (p *ProxyServer) handleHTTP(conn net.Conn, req *http.Request, stealth bool,
 	req.Header.Del("Transfer-Encoding")
 	req.Header.Del("Upgrade")
 
-	if stealth {
+	if mode == "stealth" || mode == "mitm" {
 		for h := range stealthStrip {
 			req.Header.Del(h)
 		}
@@ -484,7 +492,7 @@ func main() {
 
 		switch msg.Command {
 		case "start":
-			if err := proxy.start(msg.Port, msg.BindAddr, msg.Stealth); err != nil {
+			if err := proxy.start(msg.Port, msg.BindAddr, msg.Mode); err != nil {
 				proxy.mu.Lock()
 				proxy.running = false
 				proxy.mu.Unlock()
@@ -496,7 +504,7 @@ func main() {
 					Running:  true,
 					Port:     proxy.port,
 					BindAddr: proxy.bindAddr,
-					Stealth:  proxy.stealth,
+					Mode:     proxy.mode,
 					CAReady:  caKey != nil,
 					CAPEM:    string(caCertPEM),
 				})
@@ -514,7 +522,7 @@ func main() {
 				Running:  proxy.running,
 				Port:     proxy.port,
 				BindAddr: proxy.bindAddr,
-				Stealth:  proxy.stealth,
+				Mode:     proxy.mode,
 				CAReady:  caKey != nil,
 				CAPEM:    string(caCertPEM),
 			})
