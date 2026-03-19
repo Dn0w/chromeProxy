@@ -287,8 +287,8 @@ function setHostStatus(state) {
   hostDot.className = 'host-dot' + (state !== 'checking' ? ' ' + state : '');
   const labels = { ok: 'Installed ✓', missing: 'Not installed', error: 'Error', checking: 'Checking…' };
   hostStatusText.textContent = labels[state] || state;
-  installBtn.style.display = state === 'ok' ? 'none' : 'block';
-  if (state === 'ok') installSteps.style.display = 'none';
+  installBtn.style.display = state === 'checking' ? 'none' : 'block';
+  installBtn.textContent = state === 'ok' ? 'Reinstall Native Host' : 'Install Native Host';
 }
 
 // Detect host status: try connecting via background; if error message contains
