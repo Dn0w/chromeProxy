@@ -90,8 +90,6 @@ function caInstallLabel() {
   return 'Run in Terminal (requires libnss3-tools):';
 }
 
-let pendingCADownload = false;
-
 function doCADownload(pem) {
   const fname = 'chrome-proxy-ca.crt';
   const blob  = new Blob([pem], { type: 'application/x-x509-ca-cert' });
@@ -107,17 +105,36 @@ function doCADownload(pem) {
   makeCopyBtn(caCopyBtn, cmd);
 }
 
+function pollForCAPEM(attempts) {
+  if (attempts <= 0) {
+    caDlBtn.textContent = 'Download CA Certificate';
+    caDlBtn.disabled = false;
+    errBox.style.display = 'block';
+    errBox.textContent = '⚠ Could not reach native host. Make sure it is installed.';
+    return;
+  }
+  chrome.runtime.sendMessage({ type: 'getState' }, (resp) => {
+    if (resp && resp.caPEM) {
+      caDlBtn.textContent = 'Download CA Certificate';
+      caDlBtn.disabled = false;
+      doCADownload(resp.caPEM);
+    } else {
+      setTimeout(() => pollForCAPEM(attempts - 1), 600);
+    }
+  });
+}
+
 caDlBtn.addEventListener('click', () => {
   chrome.runtime.sendMessage({ type: 'getState' }, (resp) => {
     const pem = resp && resp.caPEM;
     if (pem) {
       doCADownload(pem);
     } else {
-      // Native host not yet connected — connect it and wait for status
       caDlBtn.textContent = 'Connecting…';
       caDlBtn.disabled = true;
-      pendingCADownload = true;
-      chrome.runtime.sendMessage({ type: 'connectNative' });
+      chrome.runtime.sendMessage({ type: 'connectNative' }, () => {
+        pollForCAPEM(10); // poll up to 10 × 600ms = 6 seconds
+      });
     }
   });
 });
@@ -245,15 +262,7 @@ methodFilter.addEventListener('change', applyFilter);
 // ── Live updates ──────────────────────────────────────────────────────────────
 
 chrome.runtime.onMessage.addListener((msg) => {
-  if (msg.type === 'stateUpdate') {
-    applyState(msg.state);
-    if (pendingCADownload && msg.state.caPEM) {
-      pendingCADownload = false;
-      caDlBtn.textContent = 'Download CA Certificate';
-      caDlBtn.disabled = false;
-      doCADownload(msg.state.caPEM);
-    }
-  }
+  if (msg.type === 'stateUpdate') applyState(msg.state);
   if (msg.type === 'newLog') {
     allLogs.unshift(msg.entry);
     if (allLogs.length > 1000) allLogs.length = 1000;
