@@ -91,7 +91,22 @@ function caInstallLabel() {
 }
 
 caDlBtn.addEventListener('click', () => {
-  chrome.runtime.sendMessage({ type: 'getCACert' });
+  chrome.runtime.sendMessage({ type: 'getState' }, (resp) => {
+    const pem = resp && resp.caPEM;
+    if (!pem) { alert('Native host not connected. Start the proxy first.'); return; }
+    const fname = 'chrome-proxy-ca.crt';
+    const blob  = new Blob([pem], { type: 'application/x-x509-ca-cert' });
+    const a     = document.createElement('a');
+    a.href      = URL.createObjectURL(blob);
+    a.download  = fname;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    const cmd = caInstallCmd(fname);
+    caStepLbl.textContent = caInstallLabel();
+    caCmdText.textContent = cmd;
+    caSteps.style.display = 'flex';
+    makeCopyBtn(caCopyBtn, cmd);
+  });
 });
 
 function updateHowto(addr, port) {
@@ -222,20 +237,6 @@ chrome.runtime.onMessage.addListener((msg) => {
     allLogs.unshift(msg.entry);
     if (allLogs.length > 1000) allLogs.length = 1000;
     applyFilter();
-  }
-  if (msg.type === 'caCert') {
-    const fname = 'chrome-proxy-ca.crt';
-    const blob  = new Blob([msg.pem], { type: 'application/x-x509-ca-cert' });
-    const a     = document.createElement('a');
-    a.href      = URL.createObjectURL(blob);
-    a.download  = fname;
-    a.click();
-    URL.revokeObjectURL(a.href);
-    const cmd = caInstallCmd(fname);
-    caStepLbl.textContent = caInstallLabel();
-    caCmdText.textContent = cmd;
-    caSteps.style.display = 'flex';
-    makeCopyBtn(caCopyBtn, cmd);
   }
 });
 

@@ -10,6 +10,7 @@ let proxyState = {
   bindAddr: '0.0.0.0',
   stealth: false,
   caReady: false,
+  caPEM: '',
   logs: [],
   error: null
 };
@@ -45,11 +46,9 @@ function handleNativeMessage(msg) {
     if (msg.bindAddr) proxyState.bindAddr = msg.bindAddr;
     if (msg.stealth !== undefined) proxyState.stealth = msg.stealth;
     if (msg.caReady !== undefined) proxyState.caReady = msg.caReady;
+    if (msg.caPEM) proxyState.caPEM = msg.caPEM;
     proxyState.error = msg.error || null;
     broadcastState();
-  } else if (msg.type === 'caCert') {
-    // Forward CA cert PEM to any open options/popup pages
-    chrome.runtime.sendMessage({ type: 'caCert', pem: msg.pem }).catch(() => {});
   } else if (msg.type === 'log') {
     addLog(msg);
   } else if (msg.type === 'error') {
@@ -69,7 +68,7 @@ function broadcastState() {
 
 function sanitizedState() {
   // Don't send full logs in broadcast — popup/options fetch them on demand
-  return { running: proxyState.running, port: proxyState.port, bindAddr: proxyState.bindAddr, stealth: proxyState.stealth, caReady: proxyState.caReady, error: proxyState.error };
+  return { running: proxyState.running, port: proxyState.port, bindAddr: proxyState.bindAddr, stealth: proxyState.stealth, caReady: proxyState.caReady, caPEM: proxyState.caPEM, error: proxyState.error };
 }
 
 function nowTime() {
@@ -120,11 +119,6 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       if (proxyState.running && nativePort) {
         nativePort.postMessage({ command: 'start', port: proxyState.port, bindAddr: proxyState.bindAddr, stealth: msg.stealth });
       }
-      break;
-
-    case 'getCACert':
-      connectNative();
-      if (nativePort) nativePort.postMessage({ command: 'getCACert' });
       break;
 
     case 'clearLogs':

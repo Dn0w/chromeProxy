@@ -188,13 +188,8 @@ type StatusMsg struct {
 	BindAddr string `json:"bindAddr"`
 	Stealth  bool   `json:"stealth"`
 	CAReady  bool   `json:"caReady"`
+	CAPEM    string `json:"caPEM,omitempty"`
 	Error    string `json:"error,omitempty"`
-}
-
-// CACertMsg carries the CA certificate PEM for download.
-type CACertMsg struct {
-	Type string `json:"type"`
-	PEM  string `json:"pem"`
 }
 
 // LogMsg is sent for each proxied request.
@@ -493,7 +488,7 @@ func main() {
 				proxy.mu.Lock()
 				proxy.running = false
 				proxy.mu.Unlock()
-				sendMsg(StatusMsg{Type: "status", CAReady: caKey != nil, Error: err.Error()})
+				sendMsg(StatusMsg{Type: "status", CAReady: caKey != nil, CAPEM: string(caCertPEM), Error: err.Error()})
 			} else {
 				proxy.mu.Lock()
 				sendMsg(StatusMsg{
@@ -503,13 +498,14 @@ func main() {
 					BindAddr: proxy.bindAddr,
 					Stealth:  proxy.stealth,
 					CAReady:  caKey != nil,
+					CAPEM:    string(caCertPEM),
 				})
 				proxy.mu.Unlock()
 			}
 
 		case "stop":
 			proxy.stop()
-			sendMsg(StatusMsg{Type: "status", CAReady: caKey != nil})
+			sendMsg(StatusMsg{Type: "status", CAReady: caKey != nil, CAPEM: string(caCertPEM)})
 
 		case "getStatus":
 			proxy.mu.Lock()
@@ -520,11 +516,9 @@ func main() {
 				BindAddr: proxy.bindAddr,
 				Stealth:  proxy.stealth,
 				CAReady:  caKey != nil,
+				CAPEM:    string(caCertPEM),
 			})
 			proxy.mu.Unlock()
-
-		case "getCACert":
-			sendMsg(CACertMsg{Type: "caCert", PEM: string(caCertPEM)})
 		}
 	}
 }
