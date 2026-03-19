@@ -21,6 +21,14 @@ const installBtn     = document.getElementById('install-btn');
 const installSteps   = document.getElementById('install-steps');
 const cmdText        = document.getElementById('cmd-text');
 const copyCmdBtn     = document.getElementById('copy-cmd-btn');
+
+// CA certificate elements
+const caBadge   = document.getElementById('ca-badge');
+const caDlBtn   = document.getElementById('ca-dl-btn');
+const caSteps   = document.getElementById('ca-steps');
+const caStepLbl = document.getElementById('ca-step-label');
+const caCmdText = document.getElementById('ca-cmd-text');
+const caCopyBtn = document.getElementById('ca-copy-btn');
 const logBody       = document.getElementById('log-body');
 const logWrap       = document.getElementById('log-wrap');
 const logStats      = document.getElementById('log-stats');
@@ -48,6 +56,7 @@ function applyState(s) {
   bindAddrInput.value = s.bindAddr || '0.0.0.0';
   stealthToggle.checked = !!s.stealth;
   stealthLabel.textContent = s.stealth ? 'On' : 'Off';
+  updateCA(!!s.caReady);
   updateHowto(s.bindAddr || '0.0.0.0', s.port || 8080);
 
   if (s.error) {
@@ -62,6 +71,28 @@ function applyState(s) {
     applyFilter();
   }
 }
+
+function updateCA(caReady) {
+  caBadge.textContent = caReady ? 'Ready' : 'Not installed';
+  caBadge.className   = 'ca-status-badge ' + (caReady ? 'ready' : 'missing');
+}
+
+function caInstallCmd(filename) {
+  if (_isWin)  return `certutil -addstore -user Root "%USERPROFILE%\\Downloads\\${filename}"`;
+  if (_isMac)  return `sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ~/Downloads/${filename}`;
+  // Linux — Chrome/Chromium via NSS
+  return `certutil -d sql:$HOME/.pki/nssdb -A -t "C,," -n "Chrome Proxy CA" -i ~/Downloads/${filename}`;
+}
+
+function caInstallLabel() {
+  if (_isWin) return 'Run in Command Prompt (as Administrator):';
+  if (_isMac) return 'Run in Terminal:';
+  return 'Run in Terminal (requires libnss3-tools):';
+}
+
+caDlBtn.addEventListener('click', () => {
+  chrome.runtime.sendMessage({ type: 'getCACert' });
+});
 
 function updateHowto(addr, port) {
   // If bound to 0.0.0.0 show 127.0.0.1 as the connect address
@@ -191,6 +222,20 @@ chrome.runtime.onMessage.addListener((msg) => {
     allLogs.unshift(msg.entry);
     if (allLogs.length > 1000) allLogs.length = 1000;
     applyFilter();
+  }
+  if (msg.type === 'caCert') {
+    const fname = 'chrome-proxy-ca.crt';
+    const blob  = new Blob([msg.pem], { type: 'application/x-x509-ca-cert' });
+    const a     = document.createElement('a');
+    a.href      = URL.createObjectURL(blob);
+    a.download  = fname;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    const cmd = caInstallCmd(fname);
+    caStepLbl.textContent = caInstallLabel();
+    caCmdText.textContent = cmd;
+    caSteps.style.display = 'flex';
+    makeCopyBtn(caCopyBtn, cmd);
   }
 });
 

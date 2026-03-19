@@ -187,7 +187,14 @@ type StatusMsg struct {
 	Port     int    `json:"port"`
 	BindAddr string `json:"bindAddr"`
 	Stealth  bool   `json:"stealth"`
+	CAReady  bool   `json:"caReady"`
 	Error    string `json:"error,omitempty"`
+}
+
+// CACertMsg carries the CA certificate PEM for download.
+type CACertMsg struct {
+	Type string `json:"type"`
+	PEM  string `json:"pem"`
 }
 
 // LogMsg is sent for each proxied request.
@@ -354,12 +361,21 @@ func (p *ProxyServer) handleConnect(conn net.Conn, req *http.Request, stealth bo
 	}
 	defer target.Close()
 
+	fmt.Fprintf(conn, "HTTP/1.1 200 Connection established\r\n\r\n")
+
+	hostname, port, _ := net.SplitHostPort(host)
+
+	// MITM when stealth is on and CA is ready — otherwise plain tunnel
+	if stealth && caKey != nil {
+		p.handleMITM(conn, target, hostname, port, srcHost, srcPort)
+		return
+	}
+
 	status := "tunneling"
 	if stealth {
 		status = "stealth"
 	}
-	fmt.Fprintf(conn, "HTTP/1.1 200 Connection established\r\n\r\n")
-	p.sendLog("CONNECT", srcHost, srcPort, req.Host, portOf(host), "", status)
+	p.sendLog("CONNECT", srcHost, srcPort, hostname, port, "", status)
 
 	done := make(chan struct{}, 2)
 	go func() { io.Copy(target, conn); done <- struct{}{} }()
@@ -462,7 +478,9 @@ func main() {
 		}
 	}
 
-	// Native messaging host mode
+	// Native messaging host mode — init CA before entering message loop
+	loadOrCreateCA(installDir())
+
 	for {
 		msg, err := readMsg()
 		if err != nil {
@@ -475,7 +493,7 @@ func main() {
 				proxy.mu.Lock()
 				proxy.running = false
 				proxy.mu.Unlock()
-				sendMsg(StatusMsg{Type: "status", Error: err.Error()})
+				sendMsg(StatusMsg{Type: "status", CAReady: caKey != nil, Error: err.Error()})
 			} else {
 				proxy.mu.Lock()
 				sendMsg(StatusMsg{
@@ -484,13 +502,14 @@ func main() {
 					Port:     proxy.port,
 					BindAddr: proxy.bindAddr,
 					Stealth:  proxy.stealth,
+					CAReady:  caKey != nil,
 				})
 				proxy.mu.Unlock()
 			}
 
 		case "stop":
 			proxy.stop()
-			sendMsg(StatusMsg{Type: "status"})
+			sendMsg(StatusMsg{Type: "status", CAReady: caKey != nil})
 
 		case "getStatus":
 			proxy.mu.Lock()
@@ -500,8 +519,12 @@ func main() {
 				Port:     proxy.port,
 				BindAddr: proxy.bindAddr,
 				Stealth:  proxy.stealth,
+				CAReady:  caKey != nil,
 			})
 			proxy.mu.Unlock()
+
+		case "getCACert":
+			sendMsg(CACertMsg{Type: "caCert", PEM: string(caCertPEM)})
 		}
 	}
 }

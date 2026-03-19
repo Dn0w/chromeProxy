@@ -92,6 +92,22 @@
           </div>
         </section>
 
+        <section class="card" id="ca-card">
+          <h2 class="card-title">CA Certificate <span class="ca-status-badge" id="ca-badge">Checking…</span></h2>
+          <div class="field">
+            <div class="field-hint">Required for HTTPS stealth (MITM). Install once — lets the proxy decrypt and re-encrypt HTTPS traffic to strip proxy headers.</div>
+          </div>
+          <button class="btn-apply btn-ca-dl" id="ca-dl-btn">Download CA Certificate</button>
+          <div class="install-steps" id="ca-steps" style="display:none">
+            <div class="step-line" id="ca-step-label"></div>
+            <div class="cmd-row">
+              <code class="cmd-text" id="ca-cmd-text"></code>
+              <button class="btn-copy" id="ca-copy-btn" title="Copy">Copy</button>
+            </div>
+            <div class="step-line step-note">After running, restart Chrome and start the proxy.</div>
+          </div>
+        </section>
+
         <section class="card">
           <h2 class="card-title">How to Use</h2>
           <div class="howto">

@@ -396,6 +396,24 @@ input:checked + .slider::before { transform: translateX(18px); }
 .btn-copy:hover { background: #334155; color: var(--text); }
 .btn-copy.copied { color: var(--green); border-color: var(--green); }
 
+/* CA certificate */
+.ca-status-badge {
+  font-size: 10px; font-weight: 600; padding: 1px 7px;
+  border-radius: 10px; margin-left: 6px;
+  background: #1e293b; color: var(--text-muted);
+  vertical-align: middle;
+}
+.ca-status-badge.ready   { background: #052e16; color: var(--green); }
+.ca-status-badge.missing { background: #2d1b0e; color: var(--orange); }
+
+.btn-ca-dl {
+  width: 100%; margin-top: 6px; padding: 7px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 6px; color: var(--accent);
+  font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.btn-ca-dl:hover { background: #1e293b; }
+
 /* Log footer */
 .log-footer {
   padding: 6px 16px;
