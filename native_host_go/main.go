@@ -202,6 +202,7 @@ type LogMsg struct {
 	Port    string `json:"port"`
 	Path    string `json:"path"`
 	Status  string `json:"status"`
+	Mode    string `json:"mode"` // "normal" | "stealth" | "mitm"
 	Time    string `json:"timestamp"`
 }
 
@@ -361,7 +362,7 @@ func (p *ProxyServer) handleConnect(conn net.Conn, req *http.Request, mode, srcH
 	target, err := net.DialTimeout("tcp", host, 15*time.Second)
 	if err != nil {
 		fmt.Fprintf(conn, "HTTP/1.1 502 Bad Gateway\r\n\r\n")
-		p.sendLog("CONNECT", srcHost, srcPort, req.Host, portOf(host), "", "error")
+		p.sendLog("CONNECT", srcHost, srcPort, req.Host, portOf(host), "", "error", mode)
 		return
 	}
 	defer target.Close()
@@ -382,9 +383,9 @@ func (p *ProxyServer) handleConnect(conn net.Conn, req *http.Request, mode, srcH
 	if mode == "stealth" {
 		status = "stealth"
 	} else if mode == "mitm" {
-		status = "stealth" // mitm requested but CA not ready — fall back to tunnel
+		status = "tunneling" // mitm requested but CA not ready — fall back to normal tunnel
 	}
-	p.sendLog("CONNECT", srcHost, srcPort, hostname, port, "", status)
+	p.sendLog("CONNECT", srcHost, srcPort, hostname, port, "", status, mode)
 
 	done := make(chan struct{}, 2)
 	go func() { io.Copy(target, conn); done <- struct{}{} }()
@@ -415,7 +416,7 @@ func (p *ProxyServer) handleHTTP(conn net.Conn, req *http.Request, mode, srcHost
 	target, err := net.DialTimeout("tcp", targetHost, 15*time.Second)
 	if err != nil {
 		fmt.Fprintf(conn, "HTTP/1.1 502 Bad Gateway\r\n\r\n")
-		p.sendLog(req.Method, srcHost, srcPort, req.Host, portOf(targetHost), req.URL.RequestURI(), "error")
+		p.sendLog(req.Method, srcHost, srcPort, req.Host, portOf(targetHost), req.URL.RequestURI(), "error", mode)
 		return
 	}
 	defer target.Close()
@@ -423,24 +424,24 @@ func (p *ProxyServer) handleHTTP(conn net.Conn, req *http.Request, mode, srcHost
 	req.RequestURI = req.URL.RequestURI()
 	req.Header.Set("Connection", "close")
 	if err := req.Write(target); err != nil {
-		p.sendLog(req.Method, srcHost, srcPort, req.Host, portOf(targetHost), req.URL.RequestURI(), "error")
+		p.sendLog(req.Method, srcHost, srcPort, req.Host, portOf(targetHost), req.URL.RequestURI(), "error", mode)
 		return
 	}
 
 	resp, err := http.ReadResponse(bufio.NewReader(target), req)
 	if err != nil {
-		p.sendLog(req.Method, srcHost, srcPort, req.Host, portOf(targetHost), req.URL.RequestURI(), "error")
+		p.sendLog(req.Method, srcHost, srcPort, req.Host, portOf(targetHost), req.URL.RequestURI(), "error", mode)
 		return
 	}
 	defer resp.Body.Close()
 
 	status := fmt.Sprintf("%d", resp.StatusCode)
-	p.sendLog(req.Method, srcHost, srcPort, req.Host, portOf(targetHost), req.URL.RequestURI(), status)
+	p.sendLog(req.Method, srcHost, srcPort, req.Host, portOf(targetHost), req.URL.RequestURI(), status, mode)
 
 	resp.Write(conn)
 }
 
-func (p *ProxyServer) sendLog(method, srcHost, srcPort, host, hostPort, path, status string) {
+func (p *ProxyServer) sendLog(method, srcHost, srcPort, host, hostPort, path, status, mode string) {
 	sendMsg(LogMsg{
 		Type:    "log",
 		Method:  method,
@@ -450,6 +451,7 @@ func (p *ProxyServer) sendLog(method, srcHost, srcPort, host, hostPort, path, st
 		Port:    hostPort,
 		Path:    path,
 		Status:  status,
+		Mode:    mode,
 		Time:    time.Now().Format("15:04:05"),
 	})
 }

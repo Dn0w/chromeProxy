@@ -35,6 +35,7 @@ const logStats      = document.getElementById('log-stats');
 const filterStats   = document.getElementById('filter-stats');
 const filterInput   = document.getElementById('filter-input');
 const methodFilter  = document.getElementById('method-filter');
+const modeFilter    = document.getElementById('mode-filter');
 const autoscrollChk = document.getElementById('autoscroll');
 const clearBtn      = document.getElementById('clear-btn');
 
@@ -149,9 +150,11 @@ function updateHowto(addr, port) {
 function applyFilter() {
   const hostFilter = filterInput.value.trim().toLowerCase();
   const mFilter = methodFilter.value;
+  const mdFilter = modeFilter.value;
 
   filteredLogs = allLogs.filter(e => {
     if (mFilter && e.method !== mFilter) return false;
+    if (mdFilter && (e.mode || 'normal') !== mdFilter) return false;
     if (hostFilter && !(e.host || '').toLowerCase().includes(hostFilter) &&
         !(e.message || '').toLowerCase().includes(hostFilter)) return false;
     return true;
@@ -177,8 +180,9 @@ function renderLogs() {
     const status = e.status || '';
     let statusClass = 'status-ok';
     if (status.startsWith('error') || method === 'ERROR') statusClass = 'status-err';
+    else if (status === 'mitm') statusClass = 'status-mitm';
     else if (status === 'stealth') statusClass = 'status-stealth';
-    else if (method === 'CONNECT') statusClass = 'status-tun';
+    else if (status === 'tunneling') statusClass = 'status-tun';
 
     const host    = escHtml(e.host || e.message || '');
     const path    = escHtml(e.path || '');
@@ -274,6 +278,7 @@ clearBtn.addEventListener('click', () => {
 
 filterInput.addEventListener('input', applyFilter);
 methodFilter.addEventListener('change', applyFilter);
+modeFilter.addEventListener('change', applyFilter);
 
 // ── Live updates ──────────────────────────────────────────────────────────────
 

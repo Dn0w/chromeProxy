@@ -135,7 +135,7 @@ func certForHost(hostname string) (tls.Certificate, error) {
 func (p *ProxyServer) handleMITM(clientConn net.Conn, targetConn net.Conn, hostname, port, srcHost, srcPort string) {
 	tlsCert, err := certForHost(hostname)
 	if err != nil {
-		p.sendLog("CONNECT", srcHost, srcPort, hostname, port, "", "error")
+		p.sendLog("CONNECT", srcHost, srcPort, hostname, port, "", "error", "mitm")
 		return
 	}
 
@@ -153,11 +153,11 @@ func (p *ProxyServer) handleMITM(clientConn net.Conn, targetConn net.Conn, hostn
 	defer targetTLS.Close()
 
 	if err := targetTLS.Handshake(); err != nil {
-		p.sendLog("CONNECT", srcHost, srcPort, hostname, port, "", "error")
+		p.sendLog("CONNECT", srcHost, srcPort, hostname, port, "", "error", "mitm")
 		return
 	}
 
-	p.sendLog("CONNECT", srcHost, srcPort, hostname, port, "", "stealth")
+	p.sendLog("CONNECT", srcHost, srcPort, hostname, port, "", "mitm", "mitm")
 
 	clientReader := bufio.NewReader(clientTLS)
 	targetReader := bufio.NewReader(targetTLS)
@@ -188,7 +188,7 @@ func (p *ProxyServer) handleMITM(clientConn net.Conn, targetConn net.Conn, hostn
 			break
 		}
 
-		p.sendLog(req.Method, srcHost, srcPort, hostname, port, uri, fmt.Sprintf("%d", resp.StatusCode))
+		p.sendLog(req.Method, srcHost, srcPort, hostname, port, uri, fmt.Sprintf("%d", resp.StatusCode), "mitm")
 
 		shouldClose := resp.Close
 		resp.Write(clientTLS)
