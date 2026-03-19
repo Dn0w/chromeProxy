@@ -24,6 +24,9 @@ import (
 	"time"
 )
 
+// installPlatform and uninstallPlatform are defined in install_windows.go
+// and install_other.go via build tags.
+
 // ── Install / uninstall ───────────────────────────────────────────────────────
 
 const hostName = "com.chromeproxy.host"
@@ -135,22 +138,15 @@ func doInstall(extID string) {
 	}
 	data, _ := json.MarshalIndent(manifest, "", "  ")
 
-	if runtime.GOOS == "windows" {
-		installWindows(manifest, dir, data)
-	} else {
-		for _, d := range nmDirs() {
-			if err := os.MkdirAll(d, 0o755); err != nil {
-				fmt.Println("  Warning: could not create", d)
-				continue
-			}
-			p := filepath.Join(d, hostName+".json")
-			if err := os.WriteFile(p, data, 0o644); err != nil {
-				fmt.Println("  Warning:", err)
-			} else {
-				fmt.Println(" ", p)
-			}
-		}
+	// Write manifest JSON to install dir
+	mp := filepath.Join(dir, hostName+".json")
+	if err := os.WriteFile(mp, data, 0o644); err != nil {
+		fmt.Fprintln(os.Stderr, "Cannot write manifest:", err)
+		os.Exit(1)
 	}
+
+	// Register with browsers (platform-specific)
+	installPlatform(mp)
 
 	fmt.Println()
 	fmt.Println("  Binary  :", dst)
@@ -160,43 +156,9 @@ func doInstall(extID string) {
 	fmt.Println()
 }
 
-func installWindows(manifest nmManifest, dir string, data []byte) {
-	mp := filepath.Join(dir, hostName+".json")
-	os.WriteFile(mp, data, 0o644)
-
-	// Use registry via cmd — avoid importing golang.org/x/sys
-	keys := []string{
-		`SOFTWARE\Google\Chrome\NativeMessagingHosts\` + hostName,
-		`SOFTWARE\Chromium\NativeMessagingHosts\` + hostName,
-		`SOFTWARE\Microsoft\Edge\NativeMessagingHosts\` + hostName,
-	}
-	for _, k := range keys {
-		cmd := fmt.Sprintf(`reg add "HKCU\%s" /ve /t REG_SZ /d "%s" /f`, k, mp)
-		fmt.Println(" ", k)
-		_ = runCmd(cmd)
-	}
-}
-
-func runCmd(cmd string) error {
-	// Simple shell execution for install helpers
-	var args []string
-	if runtime.GOOS == "windows" {
-		args = []string{"cmd", "/C", cmd}
-	} else {
-		args = []string{"sh", "-c", cmd}
-	}
-	_ = args // used below via os/exec — imported lazily
-	// To avoid adding os/exec import overhead in proxy mode, call inline:
-	return execRun(args[0], args[1:]...)
-}
-
 func doUninstall() {
 	dir := installDir()
-	for _, d := range nmDirs() {
-		p := filepath.Join(d, hostName+".json")
-		os.Remove(p)
-		fmt.Println("  Removed:", p)
-	}
+	uninstallPlatform()
 	// Remove binary
 	bin := filepath.Join(dir, "chrome-proxy")
 	if runtime.GOOS == "windows" {
