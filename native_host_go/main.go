@@ -277,6 +277,12 @@ func (p *ProxyServer) start(port int, bindAddr, mode string) error {
 		if p.port == port && p.bindAddr == bindAddr && p.mode == mode {
 			return nil
 		}
+		// If only mode changed, update in-place — no listener restart needed.
+		// Mode is read per-connection so new value takes effect immediately.
+		if p.port == port && p.bindAddr == bindAddr {
+			p.mode = mode
+			return nil
+		}
 		p.listener.Close()
 		p.running = false
 	}
